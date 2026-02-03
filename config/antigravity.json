@@ -1,0 +1,23 @@
+{
+  "selectors": {
+    "login": {
+      "emailInput": "#usernameInput",
+      "passwordInput": "#passwordInput",
+      "loginButton": "button[type='submit']"
+    },
+    "resdex": {
+      "searchButton": ".search-btn",
+      "profileCard": ".profile-card",
+      "downloadButton": ".download-resume"
+    }
+  },
+  "timeouts": {
+    "pageLoad": 30000,
+    "elementWait": 10000,
+    "downloadWait": 15000
+  },
+  "retryConfig": {
+    "maxRetries": 3,
+    "retryDelay": 2000
+  }
+}
