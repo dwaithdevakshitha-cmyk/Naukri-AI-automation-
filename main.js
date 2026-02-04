@@ -1,30 +1,58 @@
 import { chromium } from "playwright";
-import { checkLogin } from "./automation/checkLogin.js";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 (async () => {
     const browser = await chromium.launch({ headless: false });
-    const page = await browser.newPage();
+    const context = await browser.newContext();
+    const page = await context.newPage();
 
-    const loggedIn = await checkLogin(page);
+    console.log("🌐 Opening Naukri Recruiter Login page...");
 
-    if (!loggedIn) {
-        console.log("❌ Not logged in. Please login manually in the opened browser.");
-        console.log("⏳ Waiting for you to login...");
+    // 🔑 DIRECT LOGIN PAGE (NO HOMEPAGE)
+    await page.goto("https://recruiter.naukri.com/recruit/login", {
+        waitUntil: "domcontentloaded",
+        timeout: 60000
+    });
 
-        // Pause here so you can login
-        await page.waitForTimeout(120000); // 2 minutes
+    console.log("⌛ Waiting for login form...");
 
-        const loggedInAfter = await checkLogin(page);
+    // ✅ WAIT FOR EMAIL FIELD (STABLE SELECTOR)
+    await page.waitForSelector("input[type='text'], input[type='email']", {
+        timeout: 20000
+    });
 
-        if (!loggedInAfter) {
-            console.log("❌ Login still not detected. Exiting.");
-            await browser.close();
-            return;
-        }
+    console.log("✍️ Filling email...");
+    await page.fill("input[type='text'], input[type='email']", process.env.NAUKRI_EMAIL);
+
+    console.log("✍️ Filling password...");
+    await page.fill("input[type='password']", process.env.NAUKRI_PASSWORD);
+
+    console.log("🚀 Clicking Login...");
+    await page.click("button:has-text('Login')");
+
+    // Wait for redirect after login
+    await page.waitForTimeout(8000);
+
+    const url = page.url();
+
+    if (url.includes("recruiter.naukri.com")) {
+        console.log("✅ LOGIN SUCCESSFUL");
+    } else {
+        console.log("❌ LOGIN FAILED (captcha / wrong credentials)");
     }
 
-    console.log("✅ Login successful. Proceeding...");
-
-    // NEXT STEPS will go here later
-
 })();
+app.post("/analyze", async (req, res) => {
+    try {
+        const result = await extractJD(req.body.jd);
+
+        console.log("🧠 LLM RESULT:", result); // DEBUG
+
+        res.json(result);
+    } catch (err) {
+        console.error("❌ JD extraction failed:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
