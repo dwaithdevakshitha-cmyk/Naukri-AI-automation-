@@ -2,6 +2,7 @@ import { exec, fork } from "child_process";
 import { chromium } from "playwright";
 import path from "path";
 import { fileURLToPath } from "url";
+import { goToRecruiterPage } from "./browser/goToRecruiter.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -69,9 +70,14 @@ function runLauncherLogin() {
             console.log("ℹ️ (Optional) Could not attach to CDP yet.");
         }
 
+        // Trigger Recruiter Page Navigation safely
+        await goToRecruiterPage();
+
         console.log("🚀 Everything is ready! Use the JD Analyzer tab in Chrome.");
 
     } catch (err) {
         console.error("🔥 Fatal Error in start.js:", err);
     }
 })();
+
+
