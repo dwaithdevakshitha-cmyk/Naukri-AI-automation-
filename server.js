@@ -151,7 +151,16 @@ app.get("/gui", (req, res) => {
         <span style="opacity:0.8; font-size:13px">v2.0 UI</span>
       </div>
 
-      <div class="result-section">
+      <div class="main-content">
+        <div class="input-section">
+            <h3>Input Job Description</h3>
+            <textarea id="jd" placeholder="Paste the full Job Description (JD) here..."></textarea>
+            <div class="btn-container">
+                <button id="s-btn" onclick="submitJD()">Analyze & Extract</button>
+            </div>
+        </div>
+        
+        <div class="result-section">
             <h3>Extracted Intelligence</h3>
             
             <div id="loading-overlay">

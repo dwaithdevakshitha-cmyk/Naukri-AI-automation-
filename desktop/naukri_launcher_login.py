@@ -1,30 +1,28 @@
 from pywinauto import Application, Desktop
-from pywinauto.keyboard import send_keys
 import time
 import subprocess
 
 EMAIL = "jobs.dwaith@gmail.com"
 PASSWORD = "Dwaith@1234"
 
-exe_path = r"C:\Program Files\Naukri Launcher\Naukri Launcher.exe"
-
-print("STEP 1: Launching / Ensuring Naukri Launcher")
+EXE_PATH = r"C:\Users\HP\AppData\Local\Programs\Naukri Launcher\Naukri Launcher.exe"
 
 try:
-    print("STEP 0: Killing stale instances...")
+    print("STEP 1: Checking for existing Naukri Launcher...")
+    # Optional: Kill existing to ensure clean state with debug port
     subprocess.call("taskkill /IM \"Naukri Launcher.exe\" /F", shell=True)
     time.sleep(2)
-    
-    print("STEP 1: Launching with Remote Debugging & Error Suppression...")
+
+    print("STEP 2: Launching Naukri Launcher with Debugging...")
     subprocess.Popen([
-        exe_path, 
-        "--remote-debugging-port=9222", 
+        EXE_PATH,
+        "--remote-debugging-port=9222",
         "--log-level=3",
-        "--disable-gpu",
-        "--disable-software-rasterizer"
+        "--disable-gpu"
     ])
 except Exception as e:
-    print(f"Launch failed: {e}")
+    print(f"Failed to launch: {e}")
+    pass
 
 time.sleep(12)
 
@@ -35,7 +33,6 @@ target = None
 
 for w in desktop.windows():
     title = w.window_text()
-    print("WINDOW:", title)
     if "naukri" in title.lower():
         target = w
         break
@@ -43,54 +40,54 @@ for w in desktop.windows():
 if not target:
     raise RuntimeError("Naukri window not found")
 
+print("STEP 3: Connecting to window")
+
 app = Application(backend="uia").connect(handle=target.handle)
 window = app.window(handle=target.handle)
 window.set_focus()
-time.sleep(1)
+time.sleep(25)
 
-print("STEP 3: Login")
+print("STEP 4: Login")
 
 email_box = window.child_window(control_type="Edit", found_index=0)
 email_box.wait("ready", timeout=10)
+email_box.set_focus()
 email_box.set_text(EMAIL)
 
 password_box = window.child_window(control_type="Edit", found_index=1)
 password_box.wait("ready", timeout=10)
+password_box.set_focus()
 password_box.set_text(PASSWORD)
 
 login_btn = window.child_window(control_type="Button", found_index=0)
+login_btn.wait("enabled", timeout=10)
 login_btn.click_input()
 
-print("LOGIN SENT")
+print("LOGIN_SENT")
 
-# --------------------------------------------------
-# HANDLE "UPDATE EMAIL" POPUP
-# --------------------------------------------------
+time.sleep(10)
 
-print("STEP 4: Waiting for 'Skip for now' popup")
+# -------- HANDLE "SKIP FOR NOW" POPUP --------
 
-def bypass_skip_popup(launcher_dlg):
-    print("Searching for 'Skip for now'...")
-    # 1. We search for ANY control type with this title to be safe
-    # We use 'click_input' because it simulates a real hardware mouse click
-    try:
-        # We find the element regardless of whether it's 'Text', 'Static', or 'Hyperlink'
-        target = launcher_dlg.child_window(title="Skip for now")
-        
-        if target.exists(timeout=5):
-            print("Element found! Attempting hardware click...")
-            # set_focus brings it to front; click_input moves the actual mouse
-            target.set_focus()
-            target.click_input()
-            print("Skip successful.")
-            return True
-        else:
-            print("Skip text not found. It might have already been clicked.")
-            return False
-    except Exception as e:
-        print(f"Bypass failed: {e}")
-        return False
+print("STEP 5: Checking for 'Skip for now'")
 
-bypass_skip_popup(window)
+desktop = Desktop(backend="uia")
+time.sleep(5)
 
-print("PY_LOGIN_FLOW_DONE")
+for win in desktop.windows():
+    title = win.window_text().lower()
+    if "action" in title or "update" in title:
+        win.set_focus()
+        time.sleep(1)
+
+        for child in win.descendants():
+            try:
+                txt = child.window_text().strip().lower()
+                if txt == "skip for now":
+                    child.click_input()
+                    print("SKIP_CLICKED")
+                    break
+            except Exception:
+                pass
+
+print("DONE")

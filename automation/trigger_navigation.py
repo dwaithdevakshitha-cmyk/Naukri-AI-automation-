@@ -13,44 +13,37 @@ from selenium.webdriver.support import expected_conditions as EC
 
 def launch_recruiter_portal():
     """
-    Connects to the launcher's browser and navigates to the search page.
+    Connects to the launcher's browser and navigates to the Recruiter Dashboard.
     """
     print("Initializing connection to Chrome on port 9222...")
     options = uc.ChromeOptions()
-    
-    # This port MUST match the one used by your launcher/browser
     options.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
     
     try:
-        # Note: When attaching to an existing browser, use driver_executable_path if needed, 
-        # but usually uc.Chrome() handles it if version matches.
-        # Since we are attaching, we don't spawn a new process, we just attach.
-        driver = uc.Chrome(options=options)
+        # Force version 144 to match Naukri Launcher's internal browser
+        driver = uc.Chrome(options=options, version_main=144)
         print(f"Connected to browser: {driver.title}")
+        
+        # Force Focus
+        try:
+            driver.minimize_window()
+            driver.maximize_window()
+        except:
+            pass
 
         # 1. Force navigation to the Recruiter Dashboard
-        print("Navigating to Recruiter Login/Home...")
+        print("Redirecting to Naukri Recruiter Dashboard...")
         driver.get("https://recruit.naukri.com/recruit/login")
         
-        # 2. Use LLM Data to 'Detect' the next step
-        # We wait for the 'RESDEX' menu to be clickable
-        wait = WebDriverWait(driver, 20)
+        # 2. Wait for page load
+        wait = WebDriverWait(driver, 10)
+        wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
         
-        print("Waiting for RESDEX link...")
-        resdex_menu = wait.until(EC.element_to_be_clickable((By.LINK_TEXT, "RESDEX")))
-        
-        print("Recruiter page detected. Moving to Search...")
-        resdex_menu.click()
-        
-        # 3. Navigate directly to Advanced Search
-        print("Navigating directly to Advanced Search...")
-        driver.get("https://resdex.naukri.com/v2/search/advanced")
-        
-        print("SUCCESS: Recruiter Portal Activated.")
+        print("✅ SUCCESS: Redirected to Naukri Recruiter Page.")
         return True
 
     except Exception as e:
-        print(f"Connection Failed. Ensure Chrome is running with --remote-debugging-port=9222. Error: {e}")
+        print(f"Navigation Error: {e}")
         return False
 
 if __name__ == "__main__":
