@@ -45,7 +45,7 @@ print("STEP 3: Connecting to window")
 app = Application(backend="uia").connect(handle=target.handle)
 window = app.window(handle=target.handle)
 window.set_focus()
-time.sleep(25)
+time.sleep(15)
 
 print("STEP 4: Login")
 

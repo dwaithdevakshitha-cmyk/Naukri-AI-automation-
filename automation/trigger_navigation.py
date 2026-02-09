@@ -32,14 +32,14 @@ def launch_recruiter_portal():
             pass
 
         # 1. Force navigation to the Recruiter Dashboard
-        print("Redirecting to Naukri Recruiter Dashboard...")
-        driver.get("https://recruit.naukri.com/recruit/login")
+        # print("Redirecting to Naukri Recruiter Dashboard...")
+        # driver.get("https://recruit.naukri.com/recruit/login")
         
         # 2. Wait for page load
         wait = WebDriverWait(driver, 10)
         wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
         
-        print("✅ SUCCESS: Redirected to Naukri Recruiter Page.")
+        print("SUCCESS: Connected to Naukri Launcher (Navigation Disabled).")
         return True
 
     except Exception as e:

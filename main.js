@@ -11,10 +11,10 @@ dotenv.config();
     console.log("🌐 Opening Naukri Recruiter Login page...");
 
     // 🔑 DIRECT LOGIN PAGE (NO HOMEPAGE)
-    await page.goto("https://recruiter.naukri.com/recruit/login", {
-        waitUntil: "domcontentloaded",
-        timeout: 60000
-    });
+    // await page.goto("https://recruiter.naukri.com/recruit/login", {
+    //     waitUntil: "domcontentloaded",
+    //     timeout: 60000
+    // });
 
     console.log("⌛ Waiting for login form...");
 

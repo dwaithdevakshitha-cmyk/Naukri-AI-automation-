@@ -12,9 +12,9 @@ export async function goToRecruiterPage() {
     console.log("📍 Connected to existing browser");
 
     // Go to recruiter home (safe landing page)
-    await page.goto("https://recruit.naukri.com/", {
-        waitUntil: "domcontentloaded"
-    });
+    // await page.goto("https://recruit.naukri.com/", {
+    //     waitUntil: "domcontentloaded"
+    // });
 
     console.log("✅ Navigated to Naukri Recruiter page");
 

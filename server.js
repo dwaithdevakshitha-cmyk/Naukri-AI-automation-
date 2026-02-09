@@ -1,6 +1,6 @@
 import express from "express";
 import { extractJD } from "./ai/jdExtractor.js";
-import { goToRecruiterPage } from "./browser/goToRecruiter.js";
+
 import path from "path";
 
 const app = express();

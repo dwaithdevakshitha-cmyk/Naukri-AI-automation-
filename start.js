@@ -71,7 +71,7 @@ function runLauncherLogin() {
         }
 
         // Trigger Recruiter Page Navigation safely
-        await goToRecruiterPage();
+        // await goToRecruiterPage();
 
         console.log("🚀 Everything is ready! Use the JD Analyzer tab in Chrome.");
 

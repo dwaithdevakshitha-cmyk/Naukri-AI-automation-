@@ -1,13 +1,35 @@
-import OpenAI from "openai";
+import fetch from "node-fetch";
 
-const client = new OpenAI({
-    baseURL: "http://localhost:1234/v1",
-    apiKey: "lm-studio"
-});
+/**
+ * Simple test script for LM Studio integration.
+ * MUST USE HTTP POST
+ */
+async function testLM() {
+    const url = "http://localhost:1234/v1/chat/completions";
 
-const res = await client.chat.completions.create({
-    model: "llama-3-8b-instruct",
-    messages: [{ role: "user", content: "Say OK" }]
-});
+    try {
+        const response = await fetch(url, {
+            method: "POST", // HTTP POST Required
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "meta-llama-3-8b-instruct",
+                messages: [{ role: "user", content: "Say OK" }],
+                temperature: 0
+            })
+        });
 
-console.log(res.choices[0].message.content);
+        if (!response.ok) {
+            console.error(`Error: ${response.status} ${response.statusText}`);
+            return;
+        }
+
+        const data = await response.json();
+        console.log("LM Studio Response:", data.choices[0].message.content);
+    } catch (err) {
+        console.error("Test Failed:", err.message);
+    }
+}
+
+testLM();
