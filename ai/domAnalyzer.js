@@ -7,6 +7,7 @@ export async function findSelector(dom, goal) {
     const url = "http://127.0.0.1:1234/v1/chat/completions";
 
     try {
+        console.log(`🧠 AI analyze DOM for goal: "${goal}"...`);
         const response = await fetch(url, {
             method: "POST", // HTTP POST Required
             headers: {
@@ -22,7 +23,7 @@ export async function findSelector(dom, goal) {
                     },
                     {
                         role: "user",
-                        content: `Goal: ${goal}\nDOM:\n${dom.substring(0, 5000)}` // Limit DOM size
+                        content: `Goal: ${goal}\nDOM:\n${dom.substring(0, 15000)}` // Increased limit
                     }
                 ],
                 response_format: { type: "json_object" }

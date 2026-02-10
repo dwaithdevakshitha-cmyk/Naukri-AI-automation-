@@ -1,83 +1,99 @@
 import { exec, fork } from "child_process";
-import { chromium } from "playwright";
 import path from "path";
 import { fileURLToPath } from "url";
-import { goToRecruiterPage } from "./browser/goToRecruiter.js";
+import { chromium } from "playwright";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-/**
- * Starts the backend server
- */
 function startServer() {
-    console.log("🚀 Starting JD Analyzer Server...");
+    console.log("STARTUP: Initializing JD Analyzer Server (Port 3333)...");
     const serverProcess = fork(path.join(__dirname, "server.js"), [], {
         stdio: ['inherit', 'inherit', 'inherit', 'ipc']
     });
     return serverProcess;
 }
 
-/**
- * 1. Launches the Naukri desktop app and logs in.
- */
 function runLauncherLogin() {
-    return new Promise((resolve, reject) => {
-        console.log("🔐 Starting Naukri Launcher automation...");
+    return new Promise((resolve) => {
+        console.log("STEP 1: Starting Naukri Automation (Login & Popups)...");
         exec("python desktop/naukri_launcher_login.py", (err, stdout, stderr) => {
             if (err) {
-                console.error("❌ Python failed:", stderr);
-                reject(err);
+                console.warn("LOGIN NOTICE:", stdout || stderr || err.message);
             } else {
-                console.log("✅ Launcher login finished.");
-                resolve();
+                console.log("SUCCESS: Login/Popup sequence finished.");
+                if (stdout) console.log(stdout.trim());
             }
+            resolve();
         });
     });
 }
 
-/**
- * 2. Main flow: Login, then open the GUI in a real browser tab.
- */
+async function ensureGUIOpen() {
+    console.log("STEP 2: Synchronizing JD Analyzer GUI...");
+    const GUI_URL = "http://localhost:3333/gui";
+
+    try {
+        const browser = await chromium.connectOverCDP("http://localhost:9222").catch(() => null);
+
+        if (browser) {
+            const contexts = browser.contexts();
+            let guiTab = null;
+
+            for (const context of contexts) {
+                for (const page of context.pages()) {
+                    if (page.url().includes("localhost:3333/gui")) {
+                        guiTab = page;
+                        break;
+                    }
+                }
+                if (guiTab) break;
+            }
+
+            if (guiTab) {
+                console.log("GUI: JD Analyzer already open. Bringing to front...");
+                await guiTab.bringToFront();
+                try { await guiTab.evaluate(() => { window.focus(); }); } catch (e) { }
+            } else {
+                console.log("GUI: Opening new JD Analyzer tab...");
+                const context = contexts[0] || await browser.newContext();
+                const newPage = await context.newPage();
+                await newPage.goto(GUI_URL, { waitUntil: 'domcontentloaded' });
+                await newPage.bringToFront();
+            }
+            // Keep connection alive silently, do not close browser
+        } else {
+            console.log("GUI: Browser not detected via CDP. Opening in default browser...");
+            exec(`start ${GUI_URL}`);
+        }
+    } catch (err) {
+        console.warn("GUI NOTICE:", err.message);
+        exec(`start ${GUI_URL}`);
+    }
+}
+
 (async () => {
     try {
-        // Step 0: Start the Server
+        // Start Backend
         startServer();
+        await new Promise(r => setTimeout(r, 2000));
 
-        // Step 1: Login through desktop app
+        // Start Naukri Flow
         await runLauncherLogin();
 
-        // Give time for the launcher to settle and open the main window
-        console.log("⏳ Waiting for Naukri to initialize...");
-        await new Promise(r => setTimeout(r, 15000));
+        // Focus GUI
+        await ensureGUIOpen();
 
-        // Step 2: Open the GUI in the system's default browser (Chrome) 
-        console.log("🌐 Opening JD Analyzer in a new browser tab...");
-        exec("start http://localhost:3333/gui");
+        console.log("--------------------------------------------------");
+        console.log("🚀 ALL SYSTEMS LIVE");
+        console.log("You can now begin extracting job descriptions.");
+        console.log("Keep this window open to monitor automation logs.");
+        console.log("--------------------------------------------------");
 
-        // Step 3: Connect to the launcher's debug port for background navigation automation
-        console.log("🔗 Connecting to Naukri Launcher for background automation...");
-        try {
-            const browser = await chromium.connectOverCDP("http://localhost:9222");
-            const contexts = browser.contexts();
-            if (contexts.length > 0) {
-                const pages = contexts[0].pages();
-                const naukriPage = pages.find(p => p.url().includes("recruit.naukri.com"));
-                if (naukriPage) {
-                    console.log("🎯 Naukri tab detected and ready for automation commands.");
-                }
-            }
-        } catch (cdpErr) {
-            console.log("ℹ️ (Optional) Could not attach to CDP yet.");
-        }
-
-        // Trigger Recruiter Page Navigation safely
-        // await goToRecruiterPage();
-
-        console.log("🚀 Everything is ready! Use the JD Analyzer tab in Chrome.");
+        // Keep the process alive indefinitely
+        setInterval(() => { }, 60000);
 
     } catch (err) {
-        console.error("🔥 Fatal Error in start.js:", err);
+        console.error("FATAL STARTUP ERROR:", err);
+        process.exit(1);
     }
 })();
-
-

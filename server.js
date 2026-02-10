@@ -1,6 +1,6 @@
 import express from "express";
 import { extractJD } from "./ai/jdExtractor.js";
-
+import { switchToNaukriTab } from "./automation/switchTab.js";
 import path from "path";
 
 const app = express();
@@ -189,7 +189,6 @@ app.get("/gui", (req, res) => {
                     <div id="res-skills" class="skills-container"></div>
                 </div>
                 
-                <!-- NEW SUBMIT BUTTON -->
                 <div class="btn-container" style="margin-top: 20px;">
                     <button id="submit-automation-btn" style="width:100%; background:#059669;" onclick="triggerAutomation()">✅ Confirm & Submit</button>
                 </div>
@@ -198,6 +197,8 @@ app.get("/gui", (req, res) => {
       </div>
 
       <script>
+        let currentResult = null;
+
         async function submitJD() {
           const jd = document.getElementById('jd').value;
           if(!jd.trim()) return;
@@ -222,6 +223,7 @@ app.get("/gui", (req, res) => {
             const data = await resp.json();
             
             if(data.ok && data.result) {
+                currentResult = data.result;
                 const res = data.result;
                 
                 document.getElementById('res-location').value = res.location || 'Unknown';
@@ -244,16 +246,16 @@ app.get("/gui", (req, res) => {
                 loading.style.display = 'none';
                 form.style.display = 'block';
                 
-                // Immediate unlock
                 btn.disabled = false;
                 btn.innerText = 'Analyze & Extract';
-                
+
                 // --- AUTO TRIGGER ---
-                triggerAutomation(res);
+                // We call it automatically as soon as extraction is done
+                console.log("⚡ Auto-triggering tab switch...");
+                triggerAutomation();
             } else {
                 throw new Error(data.error || 'Unknown error');
             }
-            
           } catch (e) {
             alert('Error: ' + e.message);
             btn.disabled = false;
@@ -262,16 +264,36 @@ app.get("/gui", (req, res) => {
           }
         }
 
-        async function triggerAutomation(data) {
-            console.log("Triggering automation with:", data);
+        async function triggerAutomation() {
+            // Even if manual button is clicked, we use global currentResult
+            if(!currentResult) {
+                console.warn("No extraction result to submit.");
+                return;
+            }
+
+            console.log("🚀 Triggering automation with:", currentResult);
+            const statusBtn = document.getElementById('submit-automation-btn');
+            statusBtn.disabled = true;
+            statusBtn.innerText = "⚡ Switching to Naukri...";
+            
             try {
-                await fetch('/process-automation', {
+                const resp = await fetch('/process-automation', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ data })
+                    body: JSON.stringify({ data: currentResult })
                 });
+                const data = await resp.json();
+                if(data.ok) {
+                   statusBtn.innerText = "✅ Tab Switched!";
+                   statusBtn.style.background = "#10b981";
+                } else {
+                    throw new Error(data.error);
+                }
             } catch(e) {
-                console.error("Auto-trigger failed", e);
+                console.error("Automation fail:", e);
+                statusBtn.disabled = false;
+                statusBtn.innerText = "❌ Retry Switch";
+                statusBtn.style.background = "#ef4444";
             }
         }
       </script>
@@ -291,27 +313,52 @@ app.post("/analyze", async (req, res) => {
   }
 });
 
-// NEW ROUTE TO TRIGGER AUTOMATION
+import { openResdexSearch } from "./automation/resdexNavigation.js";
+
 app.post("/process-automation", async (req, res) => {
-  console.log("🤖 Received automation trigger. Executing Python navigation...");
+  console.log("🤖 Received automation trigger. Running LLM-Powered Navigation...");
+  try {
+    const jdData = req.body.data;
+    const { exec } = await import("child_process");
 
-  // We import exec here to avoid top-level blocking or issues
-  const { exec } = await import("child_process");
+    // 1️⃣ Run the JS-LLM-Powered Navigation first
+    try {
+      await openResdexSearch();
+    } catch (navError) {
+      console.error("⚠ LLM Navigation failed, falling back to Python-only flow:", navError.message);
+    }
 
-  // Execute the Python script
-  exec("python automation/trigger_navigation.py", (error, stdout, stderr) => {
-    if (error) {
-      console.error(`❌ Automation Error: ${error.message}`);
-      return res.status(500).json({ ok: false, error: error.message });
-    }
-    if (stderr) {
-      console.error(`⚠️ Automation Stderr: ${stderr}`);
-    }
-    console.log(`✅ Automation Output: ${stdout}`);
+    // 2️⃣ Launch Python for Data Injection
+    // Convert logic to string for CLI argument
+    const jdDataStr = JSON.stringify(jdData).replace(/"/g, '\\"');
+
+    exec(`python automation/selenium_automation.py "${jdDataStr}"`, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`❌ Selenium script failed: ${error.message}`);
+        return;
+      }
+      console.log(`✅ Selenium Output: ${stdout}`);
+    });
+
     res.json({ ok: true });
-  });
+  } catch (e) {
+    console.error(`❌ Automation Error: ${e.message}`);
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
-app.listen(3333, () =>
-  console.log("🚀 JD Analyzer Server running on http://localhost:3333/gui")
+app.post("/extraction-complete", async (req, res) => {
+  try {
+    await switchToNaukriTab();
+    res.json({ status: "OK" });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Tab switch failed" });
+  }
+});
+
+const PORT = 3333;
+app.listen(PORT, () =>
+  console.log(`🚀 JD Analyzer Server running on http://localhost:${PORT}/gui`)
 );
+
